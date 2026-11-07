@@ -5,8 +5,8 @@ services:
     image: istio/examples-bookinfo-productpage-v1:1.20.0
     container_name: productpage
     environment:
-      REVIEWS_HOST: reviews
-      DETAILS_HOST: details
+      REVIEWS_HOSTNAME: reviews
+      DETAILS_HOSTNAME: details
     ports:
       - "9080:9080"
     networks:
@@ -24,21 +24,19 @@ services:
     container_name: reviews-v1
     environment:
       LOG_DIR: /tmp/logs
-      STAR_COLOR: red
-      RATINGS_HOST: ratings
     networks:
       front_reviews:
         aliases:
           - reviews
-      back_ratings: {}
 
   reviews-v2:
     image: istio/examples-bookinfo-reviews-v2:1.20.0
     container_name: reviews-v2
     environment:
       LOG_DIR: /tmp/logs
+      ENABLE_RATINGS: "true"
       STAR_COLOR: black
-      RATINGS_HOST: ratings
+      RATINGS_HOSTNAME: ratings
     networks:
       front_reviews:
         aliases:
@@ -50,8 +48,9 @@ services:
     container_name: reviews-v3
     environment:
       LOG_DIR: /tmp/logs
+      ENABLE_RATINGS: "true"
       STAR_COLOR: red
-      RATINGS_HOST: ratings
+      RATINGS_HOSTNAME: ratings
     networks:
       front_reviews:
         aliases:

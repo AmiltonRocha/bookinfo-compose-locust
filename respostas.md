@@ -17,19 +17,33 @@ enxergam). Para impor as restrições do enunciado usamos redes separadas:
 
 - `front_reviews`: liga **productpage ↔ reviews** (v1, v2, v3).
 - `front_details`: liga **productpage ↔ details**.
-- `back_ratings`: liga **reviews ↔ ratings**.
+- `back_ratings`: liga **reviews v2/v3 ↔ ratings** (o v1 não consulta o Ratings,
+  conforme o diagrama).
 
 Assim:
 
 - `productpage` alcança `reviews` e `details` (está nas duas redes de frente).
-- `reviews` alcança `ratings` (rede `back_ratings`) e é alcançada por
-  `productpage`, mas **não** alcança `details` (não compartilham rede).
+- `reviews v2/v3` alcançam `ratings` (rede `back_ratings`) e são alcançadas por
+  `productpage`, mas **não** alcançam `details` (não compartilham rede).
+- `reviews-v1` fica apenas em `front_reviews` (não fala com o Ratings).
 - `details` e `ratings` ficam isolados nas suas redes de retaguarda.
 
 O `productpage` chama `http://reviews:9080`; por isso os três contêineres de
 reviews recebem o **alias `reviews`** na rede `front_reviews` — o DNS interno do
 Docker devolve os três IPs e faz balanceamento round-robin, simulando o serviço
 único de reviews do diagrama.
+
+Os nomes das variáveis seguem o código do Bookinfo (`REVIEWS_HOSTNAME`,
+`DETAILS_HOSTNAME`, `RATINGS_HOSTNAME`). Como no Bookinfo o v2/v3 só buscam as
+avaliações quando `ENABLE_RATINGS=true`, essa variável é definida apenas neles;
+o v1 não exibe estrelas.
+
+**Limitação:** o Compose não oferece ACL por sentido do tráfego. O isolamento é
+por pertencimento a rede: quem não compartilha rede não se enxerga. Como
+`reviews` e `productpage` compartilham `front_reviews`, em tese o `reviews`
+poderia iniciar conexões ao `productpage` (a rede é bidirecional). Restringir
+*sentido* exigiria política de firewall/NetworkPolicy (ex.: iptables ou
+Kubernetes).
 
 ## b) Locust isolado no Product page
 
@@ -56,8 +70,11 @@ virtuais):
    ao aumentar a latência, o RPS máximo é limitado).
 3. **Taxa de erro / falhas** – timeouts, conexões recusadas e respostas 5xx
    começam a surgir quando o sistema não consegue mais absorver a carga.
-4. **Requisições pendentes / latência de conexão** – aumento de conexões em
-   espera indica esgotamento de pool de threads/conexões ou de CPU/memória.
+4. **Correlação com recursos do host** – o Locust mede apenas o lado do cliente
+   (latência, RPS, falhas). Para localizar o gargalo, correlacione a carga com
+   `docker stats` (CPU, memória e rede de cada contêiner): CPU/memória saturadas
+   no `productpage` ou nas réplicas de `reviews`/`ratings` explicam a queda de
+   vazão.
 
 O **ponto de saturação** é a carga (nº de usuários/RPS) imediatamente antes de
 a curva de latência disparar e a de throughput deixar de crescer — a partir
