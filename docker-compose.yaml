@@ -1,0 +1,90 @@
+name: bookinfo
+
+services:
+  productpage:
+    image: istio/examples-bookinfo-productpage-v1:1.20.0
+    container_name: productpage
+    environment:
+      REVIEWS_HOST: reviews
+      DETAILS_HOST: details
+    ports:
+      - "9080:9080"
+    networks:
+      - front_reviews
+      - front_details
+      - loadtest
+    depends_on:
+      - details
+      - reviews-v1
+      - reviews-v2
+      - reviews-v3
+
+  reviews-v1:
+    image: istio/examples-bookinfo-reviews-v1:1.20.0
+    container_name: reviews-v1
+    environment:
+      LOG_DIR: /tmp/logs
+      STAR_COLOR: red
+      RATINGS_HOST: ratings
+    networks:
+      front_reviews:
+        aliases:
+          - reviews
+      back_ratings: {}
+
+  reviews-v2:
+    image: istio/examples-bookinfo-reviews-v2:1.20.0
+    container_name: reviews-v2
+    environment:
+      LOG_DIR: /tmp/logs
+      STAR_COLOR: black
+      RATINGS_HOST: ratings
+    networks:
+      front_reviews:
+        aliases:
+          - reviews
+      back_ratings: {}
+
+  reviews-v3:
+    image: istio/examples-bookinfo-reviews-v3:1.20.0
+    container_name: reviews-v3
+    environment:
+      LOG_DIR: /tmp/logs
+      STAR_COLOR: red
+      RATINGS_HOST: ratings
+    networks:
+      front_reviews:
+        aliases:
+          - reviews
+      back_ratings: {}
+
+  details:
+    image: istio/examples-bookinfo-details-v1:1.20.0
+    container_name: details
+    networks:
+      - front_details
+
+  ratings:
+    image: istio/examples-bookinfo-ratings-v1:1.20.0
+    container_name: ratings
+    networks:
+      - back_ratings
+
+  locust:
+    image: locustio/locust:2.29.0
+    container_name: locust
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./locustfile.py:/mnt/locust/locustfile.py:ro
+    command: ["-f", "/mnt/locust/locustfile.py", "--host", "http://productpage:9080"]
+    networks:
+      - loadtest
+    depends_on:
+      - productpage
+
+networks:
+  front_reviews:
+  front_details:
+  back_ratings:
+  loadtest:
